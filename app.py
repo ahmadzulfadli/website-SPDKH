@@ -10,25 +10,37 @@ def index():
     lastFiveDatas = Hutan.query.order_by(Hutan.timestamp.desc()).limit(5).all()
 
     # Tampilkan data 30 data terakhir dalam format json
-    lastThirtyDatas = Hutan.query.order_by(Hutan.timestamp.desc()).limit(5).all()
+    lastThirtyDatas = Hutan.query.order_by(Hutan.timestamp.desc()).limit(20).all()
 
     countData = Hutan.query.count()
 
-    # Fluktuasi data sensor
-    if countData > 0:
-        lastTemperature = Hutan.query.order_by(Hutan.timestamp.desc()).first().temperature
-        lastHumidity = Hutan.query.order_by(Hutan.timestamp.desc()).first().humidity
-        lastMoisture = Hutan.query.order_by(Hutan.timestamp.desc()).first().moisture
-        lastCo = Hutan.query.order_by(Hutan.timestamp.desc()).first().co
-        lastRainfall = Hutan.query.order_by(Hutan.timestamp.desc()).first().rainfall
 
-    fluktuasi = {
-        "temperature": lastTemperature,
-        "humidity": lastHumidity,
-        "moisture": lastMoisture,
-        "co": lastCo,
-        "rainfall": lastRainfall
-    }
+    # Fluktuasi data sensor
+    if countData > 1:
+        latest_data = Hutan.query.order_by(Hutan.timestamp.desc()).first()
+        second_latest_data = Hutan.query.order_by(Hutan.timestamp.desc()).offset(1).first()
+
+        lastTemperature = latest_data.temperature - second_latest_data.temperature
+        lastHumidity = latest_data.humidity - second_latest_data.humidity
+        lastMoisture = latest_data.moisture - second_latest_data.moisture
+        lastCo = latest_data.co - second_latest_data.co
+        lastRainfall = latest_data.rainfall - second_latest_data.rainfall
+
+        fluktuasi = {
+            "temperature": lastTemperature,
+            "humidity": lastHumidity,
+            "moisture": lastMoisture,
+            "co": lastCo,
+            "rainfall": lastRainfall
+        }
+    else:
+        fluktuasi = {
+            "temperature": 0,
+            "humidity": 0,
+            "moisture": 0,
+            "co": 0,
+            "rainfall": 0
+        }
 
     # Grafik data sensor
     grafikJson = []
@@ -48,7 +60,7 @@ def index():
 @app.route('/tabel')
 def tabel():
     # tampilkan seluruh database
-    hutanDatas = Hutan.query.all()
+    hutanDatas = Hutan.query.order_by(Hutan.timestamp.desc()).all()
 
     return render_template('tabel.html', data = hutanDatas)
 
@@ -118,7 +130,7 @@ def inputData():
 
             db.session.commit()
 
-            return redirect(url_for('lihatData'))
+            return jsonify({"success": "Success to add data."}), 200
 
     except Exception as e:
         return jsonify({"error": "An error occurred while trying to add sensor data."}), 500
@@ -137,6 +149,7 @@ def lihatData():
             "humidity": item.humidity,
             "moisture": item.moisture,
             "co": item.co,
+            "count_tip": item.count_tip,
             "rainfall": item.rainfall,
             "status": item.status,
             "timestamp": item.timestamp
@@ -153,4 +166,4 @@ def lihatData():
 
 if __name__ == '__main__':
     # Launch the application
-    app.run(port = 5001, debug=True)
+    app.run()
